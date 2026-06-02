@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 资讯 — 市场快讯看板</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+</head>
+<body>
+  <div class="disclaimer">⚠️ 本平台资讯、数据等内容来自网络公开信息，仅供参考，不构成任何投资建议。</div>
+  <div class="app-shell">
+    <!-- Sidebar overlay (mobile) -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="icon">AI</span>
+          <span>资讯看板</span>
+        </div>
+      </div>
+      <div id="sidebarContent">
+        <div class="loading-state" style="padding:40px 20px">
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+      <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border-subtle)">
+        <div id="lastUpdateIndicator" style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono)">
+          每 5 分钟自动刷新
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <!-- Header -->
+      <div id="marketBar" class="market-bar"></div>
+      <header class="header">
+        <div class="header-left">
+          <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+          <div class="page-tabs">
+            <button class="page-tab active" data-page="news" onclick="switchPage('news')">📡 资讯</button>
+            <button class="page-tab" data-page="monitor" onclick="switchPage('monitor')">🌐 全球监控</button>
+          </div>
+          <span id="refreshTime" class="refresh-time"></span>
+        </div>
+        <div class="header-right">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="搜索新闻..." autocomplete="off">
+            <button id="searchClear" class="search-clear" style="display:none">✕</button>
+          </div>
+          <div class="sort-toggle">
+            <button class="sort-btn active" data-sort="impact" onclick="setSort('impact')">🔥 重点</button>
+            <button class="sort-btn" data-sort="time" onclick="setSort('time')">🕐 时间</button>
+          </div>
+          <button id="refreshBtn" class="btn btn-primary">⟳ 刷新</button>
+          <button id="themeToggle" class="btn btn-icon" aria-label="Toggle theme">◐</button>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div id="statsBar" class="stats-bar"></div>
+
+      <!-- News Content -->
+      <div id="newsContainer" class="news-container">
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <div>正在加载最新资讯...</div>
+        </div>
+      </div>
+
+      <!-- World Monitor iframe -->
+      <div id="monitorPage" class="monitor-page" style="display:none">
+        <iframe id="monitorFrame" src="" frameborder="0" style="width:100%;height:100%;border:none"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <!-- Article Detail Modal -->
+  <div id="articleModal" class="modal-overlay" style="display:none">
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div class="modal-header">
+        <div class="modal-source" id="modalSource"></div>
+        <div class="modal-time" id="modalTime"></div>
+      </div>
+      <h2 class="modal-title" id="modalTitle"></h2>
+      <div class="modal-tags" id="modalTags"></div>
+      <div class="modal-meta">
+        <div class="modal-sentiment" id="modalSentiment"></div>
+        <div class="modal-impact" id="modalImpact"></div>
+      </div>
+      <div class="modal-summary" id="modalSummary"></div>
+      <div class="modal-actions">
+        <a id="modalLink" href="#" target="_blank" class="btn btn-primary modal-read-btn">阅读原文 ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-refresh progress bar -->
+  <div class="auto-refresh-bar">
+    <div class="progress"></div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

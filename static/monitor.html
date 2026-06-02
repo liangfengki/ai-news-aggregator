@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全球监控</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-hover: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #484f58;
+      --red: #f87171;
+      --green: #4ade80;
+      --blue: #58a6ff;
+      --amber: #fbbf24;
+      --radius: 8px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); overflow-x: hidden; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; height: 100vh; overflow-y: auto; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    
+    .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+    .panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .panel-body { padding: 8px; overflow-y: auto; flex: 1; }
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    
+    /* Market indices */
+    .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; }
+    .market-item { padding: 8px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+    .market-name { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 2px; }
+    .market-price { font-family: var(--mono); font-size: 0.9rem; font-weight: 600; }
+    .market-change { font-family: var(--mono); font-size: 0.72rem; font-weight: 600; }
+    .up { color: var(--red); }
+    .down { color: var(--green); }
+    
+    /* News list */
+    .news-item { padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .news-item:hover { background: var(--bg-hover); }
+    .news-item:last-child { border-bottom: none; }
+    .news-title { font-size: 0.82rem; line-height: 1.4; margin-bottom: 3px; }
+    .news-meta { font-size: 0.68rem; color: var(--text-muted); display: flex; gap: 8px; }
+    .news-source { color: var(--blue); }
+    
+    /* Alerts */
+    .alert-item { padding: 8px 10px; border-left: 3px solid var(--amber); margin-bottom: 6px; border-radius: 0 6px 6px 0; background: rgba(251,191,36,0.05); }
+    .alert-item.critical { border-left-color: var(--red); background: rgba(248,113,113,0.05); }
+    .alert-title { font-size: 0.82rem; font-weight: 600; margin-bottom: 2px; }
+    .alert-desc { font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4; }
+    .alert-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 3px; }
+    
+    /* Map placeholder */
+    .map-container { position: relative; width: 100%; height: 100%; min-height: 250px; background: #0a0e14; border-radius: 6px; overflow: hidden; }
+    .map-container iframe { width: 100%; height: 100%; border: none; }
+    .map-label { position: absolute; bottom: 8px; left: 8px; font-size: 0.65rem; color: var(--text-muted); background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px; }
+    
+    /* Status bar */
+    .status-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 14px; background: var(--bg-card); border-top: 1px solid var(--border); font-size: 0.68rem; color: var(--text-muted); display: flex; justify-content: space-between; z-index: 10; }
+    
+    .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text-muted); font-size: 0.82rem; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.62rem; font-weight: 600; }
+    .tag-critical { background: rgba(248,113,113,0.15); color: var(--red); }
+    .tag-warning { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .tag-info { background: rgba(88,166,255,0.15); color: var(--blue); }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <!-- 大盘行情 -->
+    <div class="panel">
+      <div class="panel-header">📊 全球大盘</div>
+      <div class="panel-body" id="marketPanel">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
+    </div>
+
+    <!-- 地缘政治/突发事件 -->
+    <div class="panel">
+      <div class="panel-header">⚠️ 全球预警</div>
+      <div class="panel-body" id="alertsPanel">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
+    </div>
+
+    <!-- 全球新闻 -->
+    <div class="panel">
+      <div class="panel-header">🌍 全球要闻</div>
+      <div class="panel-body" id="globalNewsPanel">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
+    </div>
+
+    <!-- 科技动态 -->
+    <div class="panel">
+      <div class="panel-header">💻 科技动态</div>
+      <div class="panel-body" id="techNewsPanel">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span id="updateTime">最后更新: --</span>
+    <span>数据来源: 新浪财经 / RSS / AI 分类</span>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    
+    // 市场数据
+    async function loadMarket() {
+      try {
+        const resp = await fetch(`${API_BASE}/api/market`);
+        const data = await resp.json();
+        const el = document.getElementById('marketPanel');
+        el.innerHTML = `<div class="market-grid">${data.indices.map(idx => {
+          const isUp = idx.change >= 0;
+          const cls = isUp ? 'up' : 'down';
+          const sign = isUp ? '+' : '';
+          return `<div class="market-item">
+            <div class="market-name">${idx.name}</div>
+            <div class="market-price" style="color:var(--${isUp ? 'red' : 'green'})">${idx.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div class="market-change ${cls}">${sign}${idx.change.toFixed(2)} (${sign}${idx.change_pct.toFixed(2)}%)</div>
+          </div>`;
+        }).join('')}</div>`;
+      } catch(e) {
+        document.getElementById('marketPanel').innerHTML = '<div style="padding:20px;color:var(--text-muted)">加载失败</div>';
+      }
+    }
+
+    // 全球新闻 (高影响力)
+    async function loadGlobalNews() {
+      try {
+        const resp = await fetch(`${API_BASE}/api/news?limit=20&sort=impact`);
+        const data = await resp.json();
+        const el = document.getElementById('globalNewsPanel');
+        el.innerHTML = data.items.map(item => `
+          <div class="news-item" onclick="window.open('${item.link || '#'}', '_blank')">
+            <div class="news-title">${item.title_zh || item.title}</div>
+            <div class="news-meta">
+              <span class="news-source">${item.source}</span>
+              <span>${item.market_tag || ''}</span>
+              <span>${formatTime(item.published_at)}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        document.getElementById('globalNewsPanel').innerHTML = '<div style="padding:20px;color:var(--text-muted)">加载失败</div>';
+      }
+    }
+
+    // 科技新闻
+    async function loadTechNews() {
+      try {
+        const resp = await fetch(`${API_BASE}/api/news?limit=15&market=科技`);
+        const data = await resp.json();
+        if (!data.items.length) {
+          // fallback: get recent news
+          const resp2 = await fetch(`${API_BASE}/api/news?limit=15&sort=time`);
+          const data2 = await resp2.json();
+          data.items = data2.items;
+        }
+        const el = document.getElementById('techNewsPanel');
+        el.innerHTML = data.items.map(item => `
+          <div class="news-item" onclick="window.open('${item.link || '#'}', '_blank')">
+            <div class="news-title">${item.title_zh || item.title}</div>
+            <div class="news-meta">
+              <span class="news-source">${item.source}</span>
+              <span>${formatTime(item.published_at)}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        document.getElementById('techNewsPanel').innerHTML = '<div style="padding:20px;color:var(--text-muted)">加载失败</div>';
+      }
+    }
+
+    // 全球预警 (高影响力 + 负面情绪)
+    async function loadAlerts() {
+      try {
+        const resp = await fetch(`${API_BASE}/api/news?limit=15&highlight=true`);
+        const data = await resp.json();
+        const el = document.getElementById('alertsPanel');
+        el.innerHTML = data.items.map(item => {
+          const isCritical = item.impact_score >= 80;
+          return `<div class="alert-item ${isCritical ? 'critical' : ''}">
+            <div class="alert-title">${item.title_zh || item.title}</div>
+            <div class="alert-desc">${(item.summary_zh || item.summary || '').substring(0, 120)}...</div>
+            <div class="alert-time">${item.source} · ${formatTime(item.published_at)} · <span class="tag ${isCritical ? 'tag-critical' : 'tag-warning'}">影响力 ${item.impact_score}</span></div>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        document.getElementById('alertsPanel').innerHTML = '<div style="padding:20px;color:var(--text-muted)">加载失败</div>';
+      }
+    }
+
+    function formatTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      const now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return `${Math.floor(diff/60)}分钟前`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}小时前`;
+      return d.toLocaleDateString('zh-CN', {month:'numeric', day:'numeric'});
+    }
+
+    // Init
+    loadMarket();
+    loadGlobalNews();
+    loadTechNews();
+    loadAlerts();
+    document.getElementById('updateTime').textContent = `最后更新: ${new Date().toLocaleTimeString('zh-CN')}`;
+
+    // Auto refresh every 60s
+    setInterval(() => {
+      loadMarket();
+      loadGlobalNews();
+      loadTechNews();
+      loadAlerts();
+      document.getElementById('updateTime').textContent = `最后更新: ${new Date().toLocaleTimeString('zh-CN')}`;
+    }, 60000);
+  </script>
+</body>
+</html>

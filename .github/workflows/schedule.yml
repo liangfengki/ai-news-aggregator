@@ -1,0 +1,36 @@
+name: Schedule - Resume Service
+
+on:
+  schedule:
+    # 23:55 UTC = 07:55 CST (Beijing Time)
+    # Wakes the container 5 minutes before operating hours begin
+    - cron: "55 23 * * *"
+  workflow_dispatch:
+
+jobs:
+  resume:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Resume Railway service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service=${{ vars.RAILWAY_SERVICE_ID || 'ai-news' }}
+
+      - name: Verify service is running
+        env:
+          SERVICE_URL: ${{ vars.RAILWAY_SERVICE_URL }}
+        run: |
+          sleep 30
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${SERVICE_URL}/api/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Service is healthy (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS, retrying in 15s..."
+            sleep 15
+          done
+          echo "⚠ Warning: service may not be fully ready yet"
